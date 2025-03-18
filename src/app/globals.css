@@ -1,26 +1,342 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300..700&display=swap');
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #333333;
+  --text-primary: #333333;
+  --text-secondary: #555555;
+  --accent-color: #8a2be2;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: 'Quicksand', sans-serif;
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
-    --foreground: #ededed;
+    --foreground: #f5f5f5;
+    --text-primary: #f5f5f5;
+    --text-secondary: #cccccc;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Quicksand', sans-serif;
+  font-weight: 500;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Quicksand', sans-serif;
+  font-weight: 700;
+  color: var(--accent-color);
+}
+
+.text-gray-500 {
+  color: var(--text-secondary) !important;
+}
+
+.text-gray-700 {
+  color: var(--text-primary) !important;
+}
+
+/* Override Tailwind text colors for better readability */
+.text-sm, .text-xs, p {
+  color: var(--text-primary);
+}
+
+/* Override any color classes that might cause visibility issues */
+.text-gray-400, 
+.text-gray-500, 
+.text-gray-600 {
+  color: #444444 !important;
+}
+
+.bg-gray-50 {
+  background-color: #f8f5ff !important;
+}
+
+.bg-white div, 
+.bg-gray-50 div, 
+.bg-green-50 div,
+.bg-purple-100 div {
+  color: #333333 !important;
+}
+
+/* Specific fixes for various components */
+.bg-purple-100 .text-purple-800 {
+  color: #6a0dad !important; /* Darker purple for better contrast */
+}
+
+/* Fix for text on light backgrounds */
+.bg-green-100 .text-green-800,
+.bg-orange-50 .text-orange-500,
+.bg-orange-50 .text-orange-600 {
+  text-shadow: 0 0 1px rgba(255,255,255,0.5);
+}
+
+/* Specific fixes for habit tracker text */
+.bg-green-50 span, 
+.bg-green-100 span {
+  background-color: rgba(72, 187, 120, 0.3) !important;
+  color: #1e573a !important;
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.8) !important;
+  border: 1px solid rgba(72, 187, 120, 0.5) !important;
+}
+
+/* Make any green text more visible */
+.text-green-800 {
+  color: #1e573a !important;
+  font-weight: bold !important;
+}
+
+/* Enhance background for completed habits */
+.bg-green-50 {
+  background-color: rgba(209, 250, 229, 0.8) !important;
+  border: 1px dashed rgba(72, 187, 120, 0.5) !important;
+}
+
+/* Better styling for green credit badges */
+.rounded-full[style*="backgroundColor: '#007f4e'"] {
+  color: white !important;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.5) !important;
+  border: 2px solid white !important;
+}
+
+/* Fix for the Sleep 8 Hours item credits badge */
+.habit-item div[style*="backgroundColor"] {
+  color: white !important; 
+  text-shadow: 0 1px 1px rgba(0,0,0,0.5) !important;
+}
+
+/* Add some fun styling for buttons */
+button {
+  font-family: 'Quicksand', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* Calendar styling */
+.react-calendar {
+  border: none !important;
+  font-family: 'Quicksand', sans-serif !important;
+  box-shadow: 0 4px 12px rgba(138, 43, 226, 0.1) !important;
+}
+
+.react-calendar__navigation button {
+  color: var(--accent-color) !important;
+  font-family: 'Quicksand', sans-serif !important;
+  font-size: 1.2rem !important;
+  font-weight: bold !important;
+}
+
+.react-calendar__month-view__weekdays {
+  font-family: 'Quicksand', sans-serif !important;
+  font-weight: bold !important;
+  color: var(--accent-color) !important;
+  text-transform: uppercase !important;
+}
+
+.react-calendar__month-view__weekdays__weekday {
+  color: var(--accent-color) !important;
+  text-decoration: none !important;
+}
+
+.react-calendar__month-view__weekdays__weekday abbr {
+  text-decoration: none !important;
+  font-weight: bold !important;
+}
+
+.react-calendar__month-view__days__day {
+  color: #333333 !important;
+  font-weight: 600 !important;
+}
+
+.react-calendar__tile--active,
+.react-calendar__tile--active:enabled:hover,
+.react-calendar__tile--active:enabled:focus {
+  background: var(--accent-color) !important;
+  color: white !important;
+  border-radius: 8px !important;
+}
+
+.react-calendar__tile:hover {
+  background-color: rgba(138, 43, 226, 0.2) !important;
+  border-radius: 8px !important;
+}
+
+.react-calendar__tile--now {
+  background-color: rgba(138, 43, 226, 0.15) !important;
+  border-radius: 8px !important;
+}
+
+.react-calendar__month-view__days__day--weekend {
+  color: #e6399b !important;
+}
+
+/* Explicitly style weekday names with stronger colors */
+.react-calendar__month-view__weekdays__weekday > abbr {
+  color: #8a2be2 !important;
+  font-size: 0.9rem !important;
+}
+
+/* Add a decorative bottom border to weekday names */
+.react-calendar__month-view__weekdays__weekday {
+  padding: 10px 0 !important;
+  border-bottom: 2px dotted #8a2be2 !important;
+  margin-bottom: 8px !important;
+}
+
+/* Make the weekday names stand out more with spacing and color */
+.react-calendar__month-view__weekdays {
+  margin-bottom: 10px !important;
+  background-color: rgba(138, 43, 226, 0.05) !important;
+  border-radius: 8px !important;
+  padding: 5px 0 !important;
+}
+
+/* Custom styling for the calendar header with the month name */
+.react-calendar__navigation {
+  margin-bottom: 15px !important;
+  background-color: rgba(138, 43, 226, 0.08) !important;
+  border-radius: 8px !important;
+  padding: 5px 0 !important;
+}
+
+/* Stronger styling for days */
+.react-calendar__tile {
+  padding: 10px 0 !important;
+  font-size: 1rem !important;
+  font-weight: bold !important;
+  color: #333333 !important;
+}
+
+/* Ensure weekend styling is strong */
+.react-calendar__month-view__days__day--weekend abbr {
+  color: #e6399b !important;
+  font-weight: bold !important;
+}
+
+/* Selected day styling */
+.react-calendar__tile--active abbr {
+  background-color: var(--accent-color) !important;
+  color: white !important;
+}
+
+/* Current day styling */
+.react-calendar__tile--now abbr {
+  border: 2px solid var(--accent-color) !important;
+  background-color: rgba(138, 43, 226, 0.15) !important;
+}
+
+/* Specific date styles for the calendar */
+.react-calendar__month-view__days__day {
+  position: relative !important;
+  padding-top: 8px !important;
+  padding-bottom: 32px !important; /* Increase padding to make room for badges */
+  height: 80px !important; /* Set fixed height for calendar tiles */
+}
+
+/* Make the calendar more spacious */
+.react-calendar__month-view__days {
+  row-gap: 0.5rem !important;
+}
+
+/* Style the actual day numbers */
+.react-calendar__tile abbr {
+  font-weight: bold !important;
+  font-size: 0.95rem !important;
+  display: inline-block !important;
+  padding: 5px !important;
+  border-radius: 50% !important;
+  width: 30px !important;
+  height: 30px !important;
+  line-height: 20px !important;
+  text-align: center !important;
+  color: #333333 !important;
+}
+
+/* Weekend days styling */
+.react-calendar__month-view__days__day--weekend abbr {
+  color: #e6399b !important;
+  font-weight: bold !important;
+  background-color: rgba(230, 57, 155, 0.08) !important;
+}
+
+/* Make dates with badges stand out - remove conflicting positioning */
+.react-calendar__month-view__days__day .flex {
+  width: 100% !important;
+  height: 100% !important;
+  position: relative !important;
+}
+
+/* Remove any conflicting border styles for the badge */
+.react-calendar__month-view__days__day .rounded-full {
+  border: none !important;
+}
+
+/* Customize badges and cards */
+.bg-purple-100 {
+  background-color: rgba(138, 43, 226, 0.15) !important;
+}
+
+.text-purple-800 {
+  color: var(--accent-color) !important;
+}
+
+.rounded-full {
+  border: 2px dashed #8a2be2 !important;
+}
+
+.bg-white {
+  border: 1px solid rgba(138, 43, 226, 0.2) !important;
+}
+
+/* Make buttons more playful */
+.rounded-lg {
+  border-radius: 12px !important;
+}
+
+.bg-purple-600 {
+  background: linear-gradient(135deg, #8a2be2, #9370db) !important;
+}
+
+.bg-purple-600:hover {
+  background: linear-gradient(135deg, #7823c7, #8a2be2) !important;
+}
+
+/* Specific fixes for the Sleep 8 Hours item in the green status box */
+.bg-green-50 .rounded-full {
+  border: none !important;
+}
+
+/* For any specific white/light text on light backgrounds */
+.bg-green-50 .text-white, 
+.bg-green-100 .text-white {
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3) !important;
+}
+
+/* Specific styling for rewards section */
+.bg-orange-50 {
+  background-color: #FFF3E0 !important;
+  border: 1px solid #FFB74D !important;
+}
+
+/* Fix for credits needed text */
+.bg-white p,
+.bg-gray-50 p {
+  color: #333333 !important;
+  font-weight: 600 !important;
+}
+
+/* Make credits badge more visible */
+.bg-purple-100 {
+  background-color: rgba(138, 43, 226, 0.15) !important;
+  border: 2px dashed #8a2be2 !important;
 }
