@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import ReactCalendar from 'react-calendar'
-import { format, isAfter, startOfDay } from 'date-fns'
+import { format, isAfter } from 'date-fns'
 import type { HabitRecord } from '../lib/redis'
 import { calendarStyles } from '../styles'
 import 'react-calendar/dist/Calendar.css'
@@ -24,8 +24,8 @@ const formatWeekdayName = (locale: string | undefined, date: Date) => {
 
 export default function Calendar({ habits = [], onDateSelect }: CalendarProps) {
   const [date, setDate] = useState<Date>(new Date())
-  const today = startOfDay(new Date());
-
+  // Get fresh system date for each render to avoid stale dates
+  
   const getTileContent = ({ date }: { date: Date }) => {
     const dateString = format(date, 'yyyy-MM-dd');
     
@@ -51,9 +51,22 @@ export default function Calendar({ habits = [], onDateSelect }: CalendarProps) {
     );
   }
 
-  // Disable future dates
+  // Disable future dates, but always enable the current system date
   const tileDisabled = ({ date }: { date: Date }) => {
-    return isAfter(startOfDay(date), today);
+    // Always get a fresh date when checking to avoid stale dates
+    const currentSystemDate = new Date();
+    
+    // Format to yyyy-MM-dd for comparison (ignoring time)
+    const formattedCurrentDate = format(currentSystemDate, 'yyyy-MM-dd');
+    const formattedTileDate = format(date, 'yyyy-MM-dd');
+    
+    // Allow the current system date
+    if (formattedTileDate === formattedCurrentDate) {
+      return false;
+    }
+    
+    // Disable future dates (after today)
+    return isAfter(date, currentSystemDate) && formattedTileDate !== formattedCurrentDate;
   };
 
   return (

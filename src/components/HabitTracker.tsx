@@ -1,6 +1,6 @@
 import { SetStateAction, Dispatch, useState } from 'react'
 import type { HabitType } from '../lib/redis'
-import { format, isToday, isFuture } from 'date-fns'
+import { format, isAfter } from 'date-fns'
 import { habitStyles } from '../styles'
 
 const HABITS = [
@@ -52,12 +52,17 @@ export default function HabitTracker({
   selectedDate
 }: HabitTrackerProps) {
   const formattedDate = format(selectedDate, 'yyyy-MM-dd');
-  const isSelectedToday = isToday(selectedDate);
+  const isSelectedToday = format(new Date(), 'yyyy-MM-dd') === formattedDate;
   const [exerciseCount, setExerciseCount] = useState<Record<string, number>>({});
   
   const handleHabitToggle = (habitId: string) => {
-    // Prevent toggling for future dates
-    if (isFuture(selectedDate)) {
+    // Get current system date - fresh check every time
+    const currentSystemDate = new Date();
+    const formattedCurrentDate = format(currentSystemDate, 'yyyy-MM-dd');
+    const formattedSelectedDate = format(selectedDate, 'yyyy-MM-dd');
+    
+    // Only prevent claiming for dates that are actually future dates (not today)
+    if (isAfter(selectedDate, currentSystemDate) && formattedSelectedDate !== formattedCurrentDate) {
       return;
     }
     
@@ -154,7 +159,7 @@ export default function HabitTracker({
     <div className="space-y-4">
       <h2 className="text-2xl font-semibold">{dateDisplay}</h2>
       
-      {isFuture(selectedDate) ? (
+      {isAfter(selectedDate, new Date()) && format(selectedDate, 'yyyy-MM-dd') !== format(new Date(), 'yyyy-MM-dd') ? (
         <div className="p-4 bg-orange-50 rounded-lg text-orange-800 font-medium">
           You cannot track habits for future dates.
         </div>

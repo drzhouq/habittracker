@@ -8,7 +8,7 @@ export async function GET() {
   try {
     console.log('GET: Fetching data for key:', USER_DATA_KEY)
     const data = await redis.get(USER_DATA_KEY)
-    console.log('GET: Raw data from Redis:', data)
+   // console.log('GET: Raw data from Redis:', data)
     
     if (!data) {
       console.log('GET: No data found, returning default')
