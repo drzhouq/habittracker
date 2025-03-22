@@ -1,5 +1,6 @@
 import { rewardStyles } from '../styles';
 import Image from 'next/image';
+import { HabitType } from '../lib/redis';
 
 interface Reward {
   id: string
@@ -15,13 +16,15 @@ interface RewardsSectionProps {
   rewards: Reward[]
   onClaimReward: (rewardId: string) => void
   showHeaderOnly?: boolean
+  habitCreditTotals?: Record<HabitType, number>
 }
 
 export default function RewardsSection({
   totalCredits,
   rewards,
   onClaimReward,
-  showHeaderOnly = true
+  showHeaderOnly = true,
+  habitCreditTotals
 }: RewardsSectionProps) {
   // Calculate available and claimed rewards
   const claimedRewards = rewards.filter(r => r.claimed)
@@ -166,6 +169,29 @@ export default function RewardsSection({
           <h2 className="text-xl font-semibold mr-2">Rewards</h2>
           <span className="text-sm text-gray-500">(Total <span className="font-bold">{lifetimeCredits}</span> credits earned, <span className="font-bold">{totalClaimedCredits}</span> used)</span>
         </div>
+        
+        {/* Credit breakdown by habit type */}
+        {habitCreditTotals && (
+          <div className="grid grid-cols-4 gap-2 mb-2 text-xs bg-purple-50 p-2 rounded-md">
+            <div className="text-center">
+              <div className="font-bold">😴 Sleep</div>
+              <div>{habitCreditTotals.sleep} credits</div>
+            </div>
+            <div className="text-center">
+              <div className="font-bold">🥤 Smoothie</div>
+              <div>{habitCreditTotals.smoothie} credits</div>
+            </div>
+            <div className="text-center">
+              <div className="font-bold">🚶‍♀️ Exercise</div>
+              <div>{habitCreditTotals.exercise} credits</div>
+            </div>
+            <div className="text-center">
+              <div className="font-bold">📱 Media</div>
+              <div>{habitCreditTotals.social_media} credits</div>
+            </div>
+          </div>
+        )}
+        
         <div className="flex-1 overflow-hidden">
           {renderConciseRewards()}
         </div>
@@ -198,6 +224,39 @@ export default function RewardsSection({
               <div className="font-medium">Claimed</div>
             </div>
           </div>
+          
+          {/* Habit Credits Breakdown */}
+          {habitCreditTotals && (
+            <div className="bg-purple-50 p-4 rounded-lg">
+              <h3 className="text-lg font-medium mb-2">Credits by Habit Type:</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-white rounded-lg p-3 shadow-sm text-center">
+                  <div className="text-2xl mb-1">😴</div>
+                  <div className="font-medium">Sleep</div>
+                  <div className="font-bold text-purple-700 text-lg">{habitCreditTotals.sleep}</div>
+                  <div className="text-xs text-gray-500">credits earned</div>
+                </div>
+                <div className="bg-white rounded-lg p-3 shadow-sm text-center">
+                  <div className="text-2xl mb-1">🥤</div>
+                  <div className="font-medium">Smoothie</div>
+                  <div className="font-bold text-purple-700 text-lg">{habitCreditTotals.smoothie}</div>
+                  <div className="text-xs text-gray-500">credits earned</div>
+                </div>
+                <div className="bg-white rounded-lg p-3 shadow-sm text-center">
+                  <div className="text-2xl mb-1">🚶‍♀️</div>
+                  <div className="font-medium">Exercise</div>
+                  <div className="font-bold text-purple-700 text-lg">{habitCreditTotals.exercise}</div>
+                  <div className="text-xs text-gray-500">credits earned</div>
+                </div>
+                <div className="bg-white rounded-lg p-3 shadow-sm text-center">
+                  <div className="text-2xl mb-1">📱</div>
+                  <div className="font-medium">Social Media</div>
+                  <div className="font-bold text-purple-700 text-lg">{habitCreditTotals.social_media}</div>
+                  <div className="text-xs text-gray-500">credits earned</div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Detailed Rewards Section */}
           <div className="space-y-2">

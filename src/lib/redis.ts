@@ -35,10 +35,12 @@ class RedisWrapper {
   private client: ReturnType<typeof createClient> | null = null;
   private mockClient: boolean;
   public isOpen: boolean;
+  private connectionPromise: Promise<void> | null = null;
 
   constructor(useMock: boolean) {
     this.mockClient = useMock;
     this.isOpen = useMock; // Mock client is always "open"
+    this.connectionPromise = null;
   }
 
   initializeRealClient(url: string) {
@@ -53,21 +55,49 @@ class RedisWrapper {
     });
 
     this.client.on('error', (err) => console.error('Redis Client Error', err));
-    this.client.on('connect', () => console.log('Redis Client Connected'));
-    this.client.on('ready', () => console.log('Redis Client Ready'));
-    this.client.on('end', () => console.log('Redis Client Connection Ended'));
+    this.client.on('connect', () => { /* console.log('Redis Client Connected') */ });
+    this.client.on('ready', () => { /* console.log('Redis Client Ready') */ });
+    this.client.on('end', () => { 
+      this.isOpen = false;
+      this.connectionPromise = null;
+    });
   }
 
   async connect(): Promise<void> {
+    // If we're using a mock client, or already connected, return immediately
     if (this.mockClient || this.isOpen) return;
-    if (this.client) {
-      await this.client.connect();
-      this.isOpen = true;
+    
+    // If there's no client, we can't connect
+    if (!this.client) return;
+    
+    // If we're already in the process of connecting, return the existing promise
+    if (this.connectionPromise) {
+      return this.connectionPromise;
     }
+    
+    // Start a new connection process and store the promise
+    this.connectionPromise = (async () => {
+      try {
+        if (!this.isOpen) {
+          await this.client!.connect();
+          this.isOpen = true;
+        }
+      } catch (error) {
+        // Clear the connection promise on error
+        this.connectionPromise = null;
+        throw error;
+      }
+    })();
+    
+    return this.connectionPromise;
   }
 
   async disconnect(): Promise<void> {
     if (this.mockClient) return;
+    
+    // Reset the connection promise
+    this.connectionPromise = null;
+    
     if (this.client && this.isOpen) {
       await this.client.disconnect();
       this.isOpen = false;
@@ -108,19 +138,23 @@ class RedisWrapper {
 const redisWrapper = new RedisWrapper(isDevelopmentWithoutRedis);
 
 if (!isDevelopmentWithoutRedis && process.env.REDIS_URL) {
-  console.log('Initializing Redis client with URL:', process.env.REDIS_URL);
+  // console.log('Initializing Redis client with URL:', process.env.REDIS_URL);
   redisWrapper.initializeRealClient(process.env.REDIS_URL);
 } else if (isDevelopmentWithoutRedis) {
-  console.log('REDIS_URL not set. Using in-memory storage for local development.');
+  // console.log('REDIS_URL not set. Using in-memory storage for local development.');
 } else {
   throw new Error('REDIS_URL environment variable is not set and we are not in development mode');
 }
 
 // Ensure we're connected before operations
 const ensureConnection = async () => {
-  if (!isDevelopmentWithoutRedis && !redisWrapper.isOpen) {
-    console.log('Connecting to Redis...');
-    await redisWrapper.connect();
+  if (!isDevelopmentWithoutRedis) {
+    try {
+      await redisWrapper.connect();
+    } catch (error) {
+      console.error('Redis connection error:', error);
+      throw error;
+    }
   }
 };
 

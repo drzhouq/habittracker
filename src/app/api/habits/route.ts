@@ -1,26 +1,63 @@
 import { NextResponse } from 'next/server'
 import { redis } from '../../../lib/redis'
 import type { UserData } from '../../../lib/redis'
+import { auth, getUserDataKeyByEmail } from '@/lib/auth'
 
-const USER_DATA_KEY = 'userData'
+// Function to get user-specific data key
+function getUserDataKey(userId: string) {
+  return `userData:${userId}`
+}
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    console.log('GET: Fetching data for key:', USER_DATA_KEY)
-    const data = await redis.get(USER_DATA_KEY)
-   // console.log('GET: Raw data from Redis:', data)
+    // Get user from session
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // Get userId from query parameter or session
+    const url = new URL(request.url)
+    const userId = url.searchParams.get('userId') || session.user.id
+    
+    // Use email-based data key if user is authenticated
+    let dataKey = getUserDataKey(userId)
+    if (session.user.email) {
+      // Prefer email-based key for more consistent data access
+      dataKey = getUserDataKeyByEmail(session.user.email)
+    }
+    
+    // console.log('GET: Fetching from Redis:', dataKey)
+    const data = await redis.get(dataKey)
     
     if (!data) {
-      console.log('GET: No data found, returning default')
-      return NextResponse.json({ totalCredits: 0, habits: [], rewards: [] })
+      // If no data found with email key, fall back to ID-based key
+      if (dataKey !== getUserDataKey(userId)) {
+        const idBasedData = await redis.get(getUserDataKey(userId))
+        if (idBasedData) {
+          // If found with ID, copy it to the email-based key for future use
+          await redis.set(dataKey, idBasedData)
+          return NextResponse.json(JSON.parse(idBasedData as string))
+        }
+      }
+      
+      // Still no data, return empty data structure
+      const emptyData: UserData = {
+        totalCredits: 0,
+        habits: [],
+        rewards: []
+      }
+      return NextResponse.json(emptyData)
     }
 
     try {
-      const parsedData = JSON.parse(data as string) as UserData
-      console.log('GET: Parsed data:', parsedData)
+      const parsedData = JSON.parse(data as string)
       return NextResponse.json(parsedData)
-    } catch (parseError) {
-      console.error('GET: Error parsing Redis data:', parseError)
+    } catch (error) {
+      console.error('GET: Error parsing Redis data:', error)
       return NextResponse.json(
         { error: 'Invalid data format in Redis' },
         { status: 500 }
@@ -37,22 +74,48 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    console.log('POST: Parsing request body...')
+    // Get user from session
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    
+    // console.log('POST: Parsing request body...')
     const data: UserData = await request.json()
-    console.log('POST: Received data:', data)
+    // console.log('POST: Received data:', data)
     
     if (!data) {
-      console.log('POST: No data received')
+      // console.log('POST: No data received')
       return NextResponse.json(
         { error: 'Invalid data' },
         { status: 400 }
       )
     }
 
-    const stringifiedData = JSON.stringify(data)
-    console.log('POST: Stringified data:', stringifiedData)
+    // Get userId from request body or session
+    const url = new URL(request.url)
+    const userId = url.searchParams.get('userId') || session.user.id
     
-    await redis.set(USER_DATA_KEY, stringifiedData)
+    // Use email-based data key if user is authenticated
+    let dataKey = getUserDataKey(userId)
+    if (session.user.email) {
+      // Prefer email-based key for more consistent data access
+      dataKey = getUserDataKeyByEmail(session.user.email)
+    }
+
+    const stringifiedData = JSON.stringify(data)
+    // console.log('POST: Stringified data:', stringifiedData)
+    
+    await redis.set(dataKey, stringifiedData)
+    
+    // If using email key, also update the ID-based key for backward compatibility
+    if (dataKey !== getUserDataKey(userId)) {
+      await redis.set(getUserDataKey(userId), stringifiedData)
+    }
+    
     return NextResponse.json(data)
   } catch (error) {
     console.error('Redis POST Error:', error)

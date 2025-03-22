@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import Calendar from '../components/Calendar'
 import HabitTracker from '../components/HabitTracker'
 import RewardsSection from '../components/RewardsSection'
@@ -41,28 +43,62 @@ const INITIAL_USER_DATA: UserData = {
 };
 
 export default function Home() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [userData, setUserData] = useState<UserData>(INITIAL_USER_DATA);
   //const [isResetting, setIsResetting] = useState(false);
   const [completedHabits, setCompletedHabits] = useState<Set<string>>(new Set());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [habitCreditTotals, setHabitCreditTotals] = useState<Record<HabitType, number>>({
+    sleep: 0,
+    smoothie: 0,
+    exercise: 0,
+    social_media: 0
+  });
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    }
+  }, [status, router]);
 
   useEffect(() => {
     const fetchData = async () => {
+      if (status !== 'authenticated' || !session?.user?.id) return;
+
       try {
-        const response = await fetch('/api/habits');
+        // Include user ID in the request to get user-specific data
+        const response = await fetch(`/api/habits?userId=${session.user.id}`);
         const data = await response.json();
+        
         if (Object.keys(data).length > 0) {
+          // Ensure we have the complete userData including rewards
           setUserData(data);
+          
+          // Also fetch rewards specifically to ensure we have the latest
+          try {
+            const rewardsResponse = await fetch(`/api/rewards?userId=${session.user.id}`);
+            const rewardsData = await rewardsResponse.json();
+            
+            if (rewardsData.rewards && rewardsData.rewards.length > 0) {
+              // Update userData with the fetched rewards
+              setUserData(prevData => ({
+                ...prevData,
+                rewards: rewardsData.rewards
+              }));
+            }
+          } catch (rewardsError) {
+            console.error('Failed to fetch rewards data:', rewardsError);
+          }
         }
       } catch (error) {
         console.error('Failed to fetch data:', error);
       }
     };
     
-    //if (!isResetting) {
-      fetchData();
-    //}
-  }, []);
+    fetchData();
+  }, [status, session]);
 
   // Update completedHabits when userData or selectedDate changes
   useEffect(() => {
@@ -73,6 +109,26 @@ export default function Home() {
     
     setCompletedHabits(new Set(selectedDateCompletedHabits));
   }, [userData.habits, selectedDate]);
+
+  // Calculate habit category totals when userData changes
+  useEffect(() => {
+    const totals: Record<HabitType, number> = {
+      sleep: 0,
+      smoothie: 0,
+      exercise: 0,
+      social_media: 0
+    };
+    
+    userData.habits.forEach(habit => {
+      if (habit.action === 'earn') {
+        totals[habit.habit] += habit.credits;
+      } else if (habit.action === 'lose') {
+        totals[habit.habit] -= habit.credits;
+      }
+    });
+    
+    setHabitCreditTotals(totals);
+  }, [userData.habits]);
 
   const saveData = async (data: UserData) => {
     try {
@@ -180,6 +236,19 @@ export default function Home() {
 
     setUserData(newUserData)
     await saveData(newUserData)
+    
+    // Explicitly update rewards to ensure they are saved correctly
+    try {
+      await fetch('/api/rewards', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ rewards: newUserData.rewards }),
+      });
+    } catch (error) {
+      console.error('Failed to update rewards:', error);
+    }
   }
 
   const handleDateSelect = (date: Date) => {
@@ -217,7 +286,7 @@ export default function Home() {
       <div className="max-w-4xl mx-auto space-y-4">
         <div className="flex justify-between items-center mb-2">
           <h1 className="text-2xl md:text-3xl font-bold text-purple-800">
-             Hannah&apos;s Healthy Habits Journey! 🌟
+             {session?.user?.name?.split(' ')[0] || 'Your'}{session?.user?.name?.split(' ')[0]?.endsWith('s') ? "'" : "'s"} Healthy Habits Journey! 🌟
           </h1>
         </div>
         <div className="bg-white p-3 rounded-lg shadow-md">
@@ -225,6 +294,7 @@ export default function Home() {
             totalCredits={userData.totalCredits}
             rewards={userData.rewards}
             onClaimReward={handleClaimReward}
+            habitCreditTotals={habitCreditTotals}
           />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
