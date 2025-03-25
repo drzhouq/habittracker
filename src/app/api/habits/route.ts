@@ -54,14 +54,28 @@ export async function GET(request: Request) {
     }
 
     try {
-      const parsedData = JSON.parse(data as string)
-      return NextResponse.json(parsedData)
+      
+      // Try to parse as JSON, if it fails, return the raw data
+      try {
+        const parsedData = JSON.parse(data as string);
+        return NextResponse.json(parsedData);
+      } catch (parseError) {
+        // If parsing fails, it might be a simple string value (like a UUID)
+        // Return it as is in a simple object, with empty arrays for habits and rewards
+        console.log("parseError", parseError)
+        return NextResponse.json({
+          value: data,
+          totalCredits: 0,
+          habits: [],
+          rewards: []
+        });
+      }
     } catch (error) {
-      console.error('GET: Error parsing Redis data:', error)
+      console.error('GET: Error handling Redis data:', error);
       return NextResponse.json(
         { error: 'Invalid data format in Redis' },
         { status: 500 }
-      )
+      );
     }
   } catch (error) {
     console.error('Redis GET Error:', error)

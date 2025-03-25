@@ -18,7 +18,12 @@ export function normalizeEmail(email: string): string {
 
 // Function to get user-specific data key based on email
 export function getUserDataKeyByEmail(email: string): string {
-  return `userData:email:${normalizeEmail(email)}`;
+  return `user:email:${normalizeEmail(email)}`;
+}
+
+// Function to get user profile key
+function getUserProfileKey(userId: string): string {
+  return `user:${userId}`;
 }
 
 // Create configuration for NextAuth
@@ -44,11 +49,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         
         // Check if user exists by email first
         const normalizedEmail = normalizeEmail(userEmail);
-        const userEmailKey = `user:email:${normalizedEmail}`;
+        const userEmailKey = getUserDataKeyByEmail(normalizedEmail);
+        console.log("[Auth Debug] Checking email mapping:", userEmailKey);
         const existingUserIdByEmail = await redis.get(userEmailKey);
+        console.log("[Auth Debug] Existing user ID for email:", existingUserIdByEmail);
         
         // If no user exists yet with this email
         if (!existingUserIdByEmail) {
+          console.log("[Auth Debug] No existing user found for email, creating new user");
           // Create or update user info
           const isAdmin = userEmail === process.env.ADMIN_EMAIL;
           
@@ -65,29 +73,33 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           };
           
           // Save user by ID
-          await redis.set(`user:${userId}`, JSON.stringify(newUser));
+          const userProfileKey = getUserProfileKey(userId);
+          console.log("[Auth Debug] Saving new user profile:", userProfileKey);
+          await redis.set(userProfileKey, JSON.stringify(newUser));
           
           // Create email to ID mapping
+          console.log("[Auth Debug] Creating email mapping:", userEmailKey, "->", userId);
           await redis.set(userEmailKey, userId);
         } else {
+          console.log("[Auth Debug] Found existing user:", existingUserIdByEmail);
           // User exists by email, get their data
-          const userData = await redis.get(`user:${existingUserIdByEmail}`);
+          const userProfileKey = getUserProfileKey(existingUserIdByEmail);
+          console.log("[Auth Debug] Getting user profile:", userProfileKey);
+          const userData = await redis.get(userProfileKey);
           
           if (userData) {
             // User exists, get role from Redis
             const user = JSON.parse(userData as string) as User;
             token.role = user.role;
             
-            // If ID has changed, update the user
+            // If ID has changed, use the existing ID instead of creating a new one
             if (existingUserIdByEmail !== userId) {
-              user.id = userId; // Update the ID
-              
-              // Update user data with new ID
-              await redis.set(`user:${userId}`, JSON.stringify(user));
-              // Update email mapping to new ID
-              await redis.set(userEmailKey, userId);
+              console.log("[Auth Debug] Different Google ID provided, keeping original user ID:", existingUserIdByEmail);
+              // Update the token's sub to use our existing user ID
+              token.sub = existingUserIdByEmail;
             }
           } else {
+            console.log("[Auth Debug] Email mapping exists but no profile found, recreating");
             // Email mapping exists but user data doesn't - recreate
             const isAdmin = userEmail === process.env.ADMIN_EMAIL;
             token.role = isAdmin ? "admin" : "user";
@@ -102,7 +114,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             };
             
             // Save user by ID and update email mapping
-            await redis.set(`user:${userId}`, JSON.stringify(newUser));
+            const userProfileKey = getUserProfileKey(userId);
+            console.log("[Auth Debug] Saving recreated profile:", userProfileKey);
+            await redis.set(userProfileKey, JSON.stringify(newUser));
+            console.log("[Auth Debug] Updating email mapping for recreated user");
             await redis.set(userEmailKey, userId);
           }
         }
@@ -140,7 +155,7 @@ export const isAdmin = async (userId: string): Promise<boolean> => {
 export const getUserIdByEmail = async (email: string): Promise<string | null> => {
   if (!email) return null;
   const normalizedEmail = normalizeEmail(email);
-  const userId = await redis.get(`user:email:${normalizedEmail}`);
+  const userId = await redis.get(getUserDataKeyByEmail(normalizedEmail));
   return userId;
 };
 
