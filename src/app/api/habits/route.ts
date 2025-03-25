@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { redis } from '../../../lib/redis'
 import type { UserData } from '../../../lib/redis'
-import { auth, getUserDataKeyByEmail } from '@/lib/auth'
+import { auth } from '@/lib/auth'
 
 // Function to get user-specific data key
 function getUserDataKey(userId: string) {
@@ -23,28 +23,14 @@ export async function GET(request: Request) {
     const url = new URL(request.url)
     const userId = url.searchParams.get('userId') || session.user.id
     
-    // Use email-based data key if user is authenticated
-    let dataKey = getUserDataKey(userId)
-    if (session.user.email) {
-      // Prefer email-based key for more consistent data access
-      dataKey = getUserDataKeyByEmail(session.user.email)
-    }
+    // Always use ID-based key for user data
+    const dataKey = getUserDataKey(userId)
     
     // console.log('GET: Fetching from Redis:', dataKey)
     const data = await redis.get(dataKey)
     
     if (!data) {
-      // If no data found with email key, fall back to ID-based key
-      if (dataKey !== getUserDataKey(userId)) {
-        const idBasedData = await redis.get(getUserDataKey(userId))
-        if (idBasedData) {
-          // If found with ID, copy it to the email-based key for future use
-          await redis.set(dataKey, idBasedData)
-          return NextResponse.json(JSON.parse(idBasedData as string))
-        }
-      }
-      
-      // Still no data, return empty data structure
+      // Return empty data structure
       const emptyData: UserData = {
         totalCredits: 0,
         habits: [],
@@ -113,22 +99,13 @@ export async function POST(request: Request) {
     const url = new URL(request.url)
     const userId = url.searchParams.get('userId') || session.user.id
     
-    // Use email-based data key if user is authenticated
-    let dataKey = getUserDataKey(userId)
-    if (session.user.email) {
-      // Prefer email-based key for more consistent data access
-      dataKey = getUserDataKeyByEmail(session.user.email)
-    }
+    // Always use ID-based key for user data
+    const dataKey = getUserDataKey(userId)
 
     const stringifiedData = JSON.stringify(data)
     // console.log('POST: Stringified data:', stringifiedData)
     
     await redis.set(dataKey, stringifiedData)
-    
-    // If using email key, also update the ID-based key for backward compatibility
-    if (dataKey !== getUserDataKey(userId)) {
-      await redis.set(getUserDataKey(userId), stringifiedData)
-    }
     
     return NextResponse.json(data)
   } catch (error) {

@@ -23,31 +23,12 @@ export async function GET(request: Request) {
     const url = new URL(request.url)
     const userId = url.searchParams.get('userId') || session.user.id
     
-    // Use email-based data key if user is authenticated
-    let dataKey = getUserDataKey(userId)
-    if (session.user.email) {
-      // Prefer email-based key for more consistent data access
-      dataKey = getUserDataKeyByEmail(session.user.email)
-    }
+    // Always use ID-based key for rewards data
+    const dataKey = getUserDataKey(userId)
     
     const data = await redis.get(dataKey)
     
     if (!data) {
-      // If no data found with email key, fall back to ID-based key
-      if (dataKey !== getUserDataKey(userId)) {
-        const idBasedData = await redis.get(getUserDataKey(userId))
-        if (idBasedData) {
-          // If found with ID, copy it to the email-based key for future use
-          await redis.set(dataKey, idBasedData)
-          try {
-            const parsedData = JSON.parse(idBasedData as string) as UserData
-            return NextResponse.json({ rewards: parsedData.rewards || [] })
-          } catch (error) {
-            console.error('GET: Error parsing ID-based Redis data:', error)
-          }
-        }
-      }
-      
       return NextResponse.json({ rewards: [] })
     }
 
