@@ -1,25 +1,41 @@
 import { NextResponse } from 'next/server'
 import { redis } from '../../../../lib/redis'
 import type { UserData } from '../../../../lib/redis'
+import { auth } from '@/lib/auth'
 
-const USER_DATA_KEY = 'userData'
-const API_KEY = process.env.RESET_API_KEY || 'default-dev-key'  // Set this in your .env.local file
+// Function to get user-specific data key
+function getUserDataKey(userId: string) {
+  return `userData:${userId}`
+}
 
 export async function POST(request: Request) {
   try {
-    // Verify API key
-    const authHeader = request.headers.get('Authorization')
-    const apiKey = authHeader?.replace('Bearer ', '')
-    
-    if (!apiKey || apiKey !== API_KEY) {
+    // Get user from session
+    const session = await auth()
+    if (!session?.user) {
       return NextResponse.json(
-        { error: 'Unauthorized access' },
+        { error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
+    // Only allow admin users to reset data
+    if (session.user.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Admin access required' },
+        { status: 403 }
+      )
+    }
+
+    // Get userId from request body if provided, otherwise use session user id
+    const body = await request.json().catch(() => ({}));
+    const targetUserId = body.userId || session.user.id;
+    
+    // Get data key for the user
+    const dataKey = getUserDataKey(targetUserId);
+
     // Get current data from Redis
-    const currentDataString = await redis.get(USER_DATA_KEY)
+    const currentDataString = await redis.get(dataKey)
     let currentData: UserData = { totalCredits: 0, habits: [], rewards: [] }
     
     if (currentDataString) {
@@ -41,11 +57,11 @@ export async function POST(request: Request) {
     }
 
     // Save back to Redis
-    await redis.set(USER_DATA_KEY, JSON.stringify(updatedData))
+    await redis.set(dataKey, JSON.stringify(updatedData))
     
     return NextResponse.json({ 
       success: true, 
-      message: 'Total credits have been reset to 0',
+      message: `Total credits for user ${targetUserId} have been reset to 0`,
       data: { totalCredits: updatedData.totalCredits }
     })
   } catch (error) {
